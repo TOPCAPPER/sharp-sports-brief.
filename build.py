@@ -21,22 +21,24 @@ DEMO = "--demo" in sys.argv
 ODDS_URL = "https://api.the-odds-api.com/v4/sports/{sport}/odds"
 EVENT_ODDS_URL = "https://api.the-odds-api.com/v4/sports/{sport}/events/{event_id}/odds"
 
-SPORTS = [("basketball_wnba", "WNBA"),
-    ("americanfootball_ncaaf", "College Football"),
+SPORTS = [
     ("americanfootball_nfl", "NFL"),
     ("basketball_nba", "NBA"),
     ("icehockey_nhl", "NHL"),
     ("baseball_mlb", "MLB"),
     ("soccer_epl", "Premier League"),
     ("soccer_uefa_champs_league", "Champions League"),
+    ("basketball_wnba", "WNBA"),
+    ("americanfootball_ncaaf", "College Football"),
     ("mma_mixed_martial_arts", "MMA"),
 ]
 
-PROP_MARKETS = {"basketball_wnba": ["player_points", "player_rebounds"],
+PROP_MARKETS = {
     "americanfootball_nfl": ["player_anytime_td", "player_pass_yds"],
     "basketball_nba": ["player_points", "player_rebounds"],
     "icehockey_nhl": ["player_points", "player_shots_on_goal"],
     "baseball_mlb": ["batter_home_runs", "pitcher_strikeouts"],
+    "basketball_wnba": ["player_points", "player_rebounds"],
     "soccer_epl": ["player_shots_on_target", "player_goal_scorer_anytime"],
     "soccer_uefa_champs_league": ["player_shots_on_target", "player_goal_scorer_anytime"],
 }
@@ -221,20 +223,20 @@ def conf_cell(c):
 
 def build_html(games, values, props_all, anytime):
     games.sort(key=lambda g: g["fair"], reverse=True)
-    values.sort(key=lambda v: v["ev"], reverse=True)
+    values.sort(key=lambda v: v["fair"], reverse=True)
     props_all.sort(key=lambda p: p["fair"], reverse=True)
     anytime.sort(key=lambda p: p["prob"], reverse=True)
     listed = [g for g in games if g["fair"] >= MIN_PROB]
     best = [g for g in listed if g["conf"] in ("High", "Medium")][:6]
 
     def game_row(g, i):
-        return (f'<tr><td class="rank">{i}</td><td class="sport">{esc(g["sport"])}</td>'
+        return (f'<tr data-sport="{esc(g["sport"])}"><td class="rank">{i}</td><td class="sport">{esc(g["sport"])}</td>'
                 f'<td>{esc(g["away"])} @ {esc(g["home"])}</td><td class="pick">{esc(g["favorite"])}</td>'
                 f'<td class="num">{pct(g["fair"])}</td><td class="num">{fmt_price(g["best_price"])}</td>'
                 f'{conf_cell(g["conf"])}<td class="time">{fmt_time(g["commence"])}</td></tr>')
 
     def value_row(v, i):
-        return (f'<tr><td class="rank">{i}</td><td class="sport">{esc(v["sport"])}</td>'
+        return (f'<tr data-sport="{esc(v["sport"])}"><td class="rank">{i}</td><td class="sport">{esc(v["sport"])}</td>'
                 f'<td class="pick">{esc(v["pick"])}<div class="sub">{esc(v["matchup"])}</div></td>'
                 f'<td class="num">{fmt_price(v["best_price"])}<div class="sub">{esc(v["best_book"])}</div></td>'
                 f'<td class="num">{pct(v["fair"])}</td><td class="num edge">+{v["ev"] * 100:.1f}%</td>'
@@ -242,14 +244,14 @@ def build_html(games, values, props_all, anytime):
                 f'<td class="time">{fmt_time(v["commence"])}</td></tr>')
 
     def prop_row(p, i):
-        return (f'<tr><td class="rank">{i}</td><td class="sport">{esc(p["sport"])}</td>'
+        return (f'<tr data-sport="{esc(p["sport"])}"><td class="rank">{i}</td><td class="sport">{esc(p["sport"])}</td>'
                 f'<td>{esc(p["matchup"])}</td><td class="pick">{esc(p["pick"])}</td>'
                 f'<td class="num">{pct(p["fair"])}</td><td class="num">{fmt_price(p["best_price"])}'
                 f'<div class="sub">{esc(p["best_book"])}</div></td>'
                 f'<td class="num">{p["ev"] * 100:+.1f}%</td>{conf_cell(p["confidence"])}</tr>')
 
     def any_row(p, i):
-        return (f'<tr><td class="rank">{i}</td><td class="sport">{esc(p["sport"])}</td>'
+        return (f'<tr data-sport="{esc(p["sport"])}"><td class="rank">{i}</td><td class="sport">{esc(p["sport"])}</td>'
                 f'<td>{esc(p["matchup"])}</td><td class="pick">{esc(p["player"])} {esc(fmt_market(p["market"]))}</td>'
                 f'<td class="num">{pct(p["prob"])}*</td><td class="num">{fmt_price(p["price"])}'
                 f'<div class="sub">{esc(p["book"])}</div></td></tr>')
@@ -274,20 +276,23 @@ def build_html(games, values, props_all, anytime):
                      if anytime else "")),
     }
     counts = {
-        "value": f"{len(values)} positive-edge bets vs. the sharp-weighted fair price, sorted by edge",
-        "best": "Favorites with the strongest fair probability and the tightest agreement between books",
+        "value": f"{len(values)} positive-edge bets vs. the sharp-weighted fair price, most likely to hit at the top",
+        "best": "Strongest favorites with tight agreement between books, most likely to win at the top",
         "full": f"{len(listed)} games ranked by fair (de-vigged) win probability",
-        "props": f"{len(props_all)} over/under props from today's top games, ranked by fair probability",
+        "props": f"{len(props_all)} over/under props from today's top games, most likely to hit at the top",
     }
     panels = "".join(
         f'<div id="{k}" class="panel{" active" if k == "value" else ""}">'
         f'<div class="count">{counts[k]}</div>{tabs[k]}</div>' for k in tabs)
 
+    sports_present = sorted({x["sport"] for x in games + values + props_all + anytime})
+    chips = '<button class="chip active" onclick="filterSport(\'All\', event)">All sports</button>' + "".join(
+        f'<button class="chip" onclick="filterSport(\'{esc(sp)}\', event)">{esc(sp)}</button>' for sp in sports_present)
     updated = datetime.now(timezone.utc).strftime("%A, %B %-d, %Y, %-I:%M %p UTC")
     demo_banner = '<div class="demo">DEMO DATA: synthetic odds for previewing the layout only.</div>' if DEMO else ""
     return (TEMPLATE.replace("%%UPDATED%%", updated).replace("%%PANELS%%", panels)
             .replace("%%TX%%", esc(TX_LEGAL_NOTE)).replace("%%MODEL%%", esc(MODEL_NOTE))
-            .replace("%%DEMO%%", demo_banner))
+            .replace("%%DEMO%%", demo_banner).replace("%%CHIPS%%", chips))
 
 
 TEMPLATE = """<!DOCTYPE html>
@@ -318,6 +323,9 @@ TEMPLATE = """<!DOCTYPE html>
   .tab-btn { border:none; background:transparent; color:var(--dim); font-family:var(--sans); font-size:.9rem; padding:8px 16px; border-radius:6px; cursor:pointer; }
   .tab-btn.active { background:var(--panel); color:var(--text); }
   .panel { display:none; } .panel.active { display:block; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .chip { border:1px solid var(--line); background:transparent; color:var(--dim); font-family:var(--sans); font-size:.8rem; padding:6px 12px; border-radius:999px; cursor:pointer; }
+  .chip.active { background:var(--accent); border-color:var(--accent); color:#11151a; font-weight:600; }
   .count { color:var(--dim); font-size:.78rem; margin-bottom:10px; }
   .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
   table { width:100%; border-collapse:collapse; min-width:720px; }
@@ -348,6 +356,7 @@ TEMPLATE = """<!DOCTYPE html>
       <button class="tab-btn" onclick="showTab('full', event)">Full Ranked List</button>
       <button class="tab-btn" onclick="showTab('props', event)">Player Props</button>
     </div>
+    <div class="chips">%%CHIPS%%</div>
     %%PANELS%%
     <div class="note">%%MODEL%%</div>
     <div class="note">%%TX%%</div>
@@ -359,6 +368,19 @@ TEMPLATE = """<!DOCTYPE html>
       document.getElementById(id).classList.add('active');
       evt.target.classList.add('active');
     }
+    function filterSport(sport, evt) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      evt.target.classList.add('active');
+      document.querySelectorAll('tbody tr[data-sport]').forEach(r => {
+        r.style.display = (sport === 'All' || r.dataset.sport === sport) ? '' : 'none';
+      });
+      document.querySelectorAll('tbody').forEach(tb => {
+        let n = 0;
+        tb.querySelectorAll('tr').forEach(r => {
+          if (r.style.display !== 'none') { n += 1; const c = r.querySelector('td.rank'); if (c) c.textContent = n; }
+        });
+      });
+    }
   </script>
 </body>
 </html>
@@ -366,8 +388,10 @@ TEMPLATE = """<!DOCTYPE html>
 
 
 # ------------------------------------------------------------- MAIN ---
-def main():
-    def is_today(iso_str):
+TODAY_ONLY = True  # show only games that start today (Central time)
+
+
+def is_today(iso_str):
     try:
         from zoneinfo import ZoneInfo
         tz = ZoneInfo(TIMEZONE)
@@ -376,11 +400,17 @@ def main():
     except Exception:
         return True
 
+
+def main():
+    if not API_KEY and not DEMO:
+        print("WARNING: ODDS_API_KEY is not set. Writing an empty page. "
+              "(Try: python build.py --demo)", file=sys.stderr)
+
     games, values = [], []
     for sport_key, label in SPORTS:
         print(f"Fetching {label} moneylines...")
         n = 0
-                for ev in fetch_events(sport_key):
+        for ev in fetch_events(sport_key):
             if TODAY_ONLY and not DEMO and not is_today(ev.get("commence_time")):
                 continue
             g, v = analyze_game(ev, label, sport_key)
