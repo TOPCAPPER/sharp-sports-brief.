@@ -21,7 +21,8 @@ DEMO = "--demo" in sys.argv
 ODDS_URL = "https://api.the-odds-api.com/v4/sports/{sport}/odds"
 EVENT_ODDS_URL = "https://api.the-odds-api.com/v4/sports/{sport}/events/{event_id}/odds"
 
-SPORTS = [
+SPORTS = [("basketball_wnba", "WNBA"),
+    ("americanfootball_ncaaf", "College Football"),
     ("americanfootball_nfl", "NFL"),
     ("basketball_nba", "NBA"),
     ("icehockey_nhl", "NHL"),
@@ -31,7 +32,7 @@ SPORTS = [
     ("mma_mixed_martial_arts", "MMA"),
 ]
 
-PROP_MARKETS = {
+PROP_MARKETS = {"basketball_wnba": ["player_points", "player_rebounds"],
     "americanfootball_nfl": ["player_anytime_td", "player_pass_yds"],
     "basketball_nba": ["player_points", "player_rebounds"],
     "icehockey_nhl": ["player_points", "player_shots_on_goal"],
