@@ -367,15 +367,22 @@ TEMPLATE = """<!DOCTYPE html>
 
 # ------------------------------------------------------------- MAIN ---
 def main():
-    if not API_KEY and not DEMO:
-        print("WARNING: ODDS_API_KEY is not set. Writing an empty page. "
-              "(Try: python build.py --demo)", file=sys.stderr)
+    def is_today(iso_str):
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(TIMEZONE)
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00")).astimezone(tz)
+        return dt.date() == datetime.now(tz).date()
+    except Exception:
+        return True
 
     games, values = [], []
     for sport_key, label in SPORTS:
         print(f"Fetching {label} moneylines...")
         n = 0
-        for ev in fetch_events(sport_key):
+                for ev in fetch_events(sport_key):
+            if TODAY_ONLY and not DEMO and not is_today(ev.get("commence_time")):
+                continue
             g, v = analyze_game(ev, label, sport_key)
             if g:
                 games.append(g)
