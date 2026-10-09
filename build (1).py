@@ -87,7 +87,7 @@ CREDIT_RESERVE = 25                 # stop optional pulls (props, lines) when cr
 MIN_PROB = 0.55                     # favorites below this fair probability are skipped in the lists
 # How many days of games to show, counting today. 1 = today only. NFL plays Thu/Sun/Mon,
 # so on other days set this to 3 (or more) to see the upcoming NFL slate.
-DAYS_AHEAD = 1
+DAYS_AHEAD = 3
 # Spreads and totals (over/under on points or goals), only pulled for sports with games
 # in the window. Set False to turn off.
 LINES_ENABLED = True
